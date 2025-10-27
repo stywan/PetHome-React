@@ -8,7 +8,7 @@ import { useFilters } from '../context/FilterContext';
 import { services } from '../data/servicesData';
 
 export function ServicesPage() {
-    const { filters, filterServices } = useFilters();
+    const { filters, filterServices, updateSearchFilter } = useFilters();
     const [selectedService, setSelectedService] = useState(null);
     const [showModal, setShowModal] = useState(false);
 
@@ -26,7 +26,7 @@ export function ServicesPage() {
 
     return (
         <MainTemplate>
-            <SearchBar value={filters.search} onChange={(value) => {}} />
+            <SearchBar value={filters.search} onChange={updateSearchFilter} />
 
             <main className="container my-5">
                 <div className="row">
@@ -45,13 +45,11 @@ export function ServicesPage() {
                 </div>
             </main>
 
-            {selectedService && (
-                <ServiceDetailModal
-                    service={selectedService}
-                    show={showModal}
-                    onHide={handleCloseModal}
-                />
-            )}
+            <ServiceDetailModal
+                service={selectedService}
+                show={showModal}
+                onHide={handleCloseModal}
+            />
         </MainTemplate>
     );
 }

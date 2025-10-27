@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useCart } from '../../context/CartContext';
+import { useNotification } from '../../context/NotificationContext';
 import { formatPrice } from '../../utils/formatters';
 import { veterinarians, timeSlots, categoryTranslations, animalTranslations } from '../../data/servicesData';
 import { Badge } from '../atoms/Badge';
 
 export function ServiceDetailModal({ service, show, onHide }) {
     const { addServiceToCart } = useCart();
+    const { showSuccess, showWarning } = useNotification();
 
     const [formData, setFormData] = useState({
         veterinarian: '',
@@ -19,8 +21,15 @@ export function ServiceDetailModal({ service, show, onHide }) {
         const modalElement = document.getElementById('serviceDetailModal');
         if (!modalElement) return;
 
+        // Get or create modal instance
+        let bsModal = window.bootstrap.Modal.getInstance(modalElement);
+
         if (show) {
-            const bsModal = new window.bootstrap.Modal(modalElement);
+            // Create modal only if it doesn't exist
+            if (!bsModal) {
+                bsModal = new window.bootstrap.Modal(modalElement);
+            }
+
             bsModal.show();
 
             // Reset form when modal is shown
@@ -33,16 +42,23 @@ export function ServiceDetailModal({ service, show, onHide }) {
 
             // Cleanup handler when modal is hidden
             const handleHidden = () => {
+                // Clean up any leftover backdrops
+                const backdrops = document.querySelectorAll('.modal-backdrop');
+                backdrops.forEach(backdrop => backdrop.remove());
+
+                // Reset body styles
+                document.body.style.overflow = '';
+                document.body.style.paddingRight = '';
+                document.body.classList.remove('modal-open');
+
                 onHide();
             };
             modalElement.addEventListener('hidden.bs.modal', handleHidden);
 
             return () => {
                 modalElement.removeEventListener('hidden.bs.modal', handleHidden);
-                bsModal.dispose();
             };
         } else {
-            const bsModal = window.bootstrap.Modal.getInstance(modalElement);
             if (bsModal) {
                 bsModal.hide();
             }
@@ -64,7 +80,7 @@ export function ServiceDetailModal({ service, show, onHide }) {
     const handleAddToCart = () => {
         // Validate required fields
         if (!formData.veterinarian || !formData.date || !formData.time) {
-            alert('Por favor, completa todos los campos requeridos (Veterinario, Fecha y Hora)');
+            showWarning('Por favor, completa todos los campos requeridos (Veterinario, Fecha y Hora)');
             return;
         }
 
@@ -87,11 +103,9 @@ export function ServiceDetailModal({ service, show, onHide }) {
             }
 
             // Show success message
-            alert('Servicio agregado al carrito exitosamente');
+            showSuccess('Servicio agregado al carrito exitosamente');
         }
     };
-
-    if (!service) return null;
 
     // Get min date for date input (today)
     const today = new Date().toISOString().split('T')[0];
@@ -105,11 +119,12 @@ export function ServiceDetailModal({ service, show, onHide }) {
                         <button type="button" className="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
                     <div className="modal-body">
-                        <div className="row">
-                            <div className="col-md-6">
-                                <img id="serviceDetailImage" src={service.image} alt={service.name} className="img-fluid rounded mb-3" />
-                                <h4 id="serviceDetailName">{service.name}</h4>
-                                <p id="serviceDetailDescription" className="text-muted">{service.description}</p>
+                        {service && (
+                            <div className="row">
+                                <div className="col-md-6">
+                                    <img id="serviceDetailImage" src={service.image} alt={service.name} className="img-fluid rounded mb-3" />
+                                    <h4 id="serviceDetailName">{service.name}</h4>
+                                    <p id="serviceDetailDescription" className="text-muted">{service.description}</p>
                                 <div className="d-flex align-items-center mb-3">
                                     <Badge variant="primary" className="me-2" id="serviceDetailCategory">
                                         {categoryTranslations[service.category]}
@@ -204,6 +219,7 @@ export function ServiceDetailModal({ service, show, onHide }) {
                                 </form>
                             </div>
                         </div>
+                        )}
                     </div>
                     <div className="modal-footer">
                         <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
