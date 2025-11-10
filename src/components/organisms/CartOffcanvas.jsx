@@ -1,13 +1,20 @@
 import { useCart } from '../../context/CartContext';
+import { useAppointments } from '../../context/AppointmentContext';
+import { useAuth } from '../../context/AuthContext';
+import { useNotification } from '../../context/NotificationContext';
 import { CartItem } from '../molecules/CartItem';
 import { Button } from '../atoms/Button';
 import { formatPrice } from '../../utils/formatters';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export function CartOffcanvas({ show, onHide }) {
-    const { cart, updateQuantity, removeFromCart, clearCart, getCartTotals, isCartEmpty } = useCart();
+    const { cart, updateQuantity, removeFromCart, clearCart, getCartTotals, isCartEmpty, processCheckout } = useCart();
+    const { createAppointment } = useAppointments();
+    const { user } = useAuth();
+    const { showSuccess, showError, showWarning } = useNotification();
     const { totalPrice } = getCartTotals();
     const offcanvasRef = useRef(null);
+    const [isProcessing, setIsProcessing] = useState(false);
 
     useEffect(() => {
         if (show) {
@@ -26,11 +33,54 @@ export function CartOffcanvas({ show, onHide }) {
     }, [show, onHide]);
 
     const handleUpdateQuantity = (item, newQuantity) => {
-        updateQuantity(item.id, newQuantity, item.veterinarian, item.date, item.time);
+        updateQuantity(item.id, newQuantity, item.petId, item.veterinarian, item.date, item.time);
     };
 
     const handleRemove = (item) => {
-        removeFromCart(item.id, item.veterinarian, item.date, item.time);
+        removeFromCart(item.id, item.petId, item.veterinarian, item.date, item.time);
+    };
+
+    const handleCheckout = async () => {
+        if (!user) {
+            showWarning('Debes iniciar sesión para agendar citas');
+            return;
+        }
+
+        if (isCartEmpty()) {
+            showWarning('Tu carrito está vacío');
+            return;
+        }
+
+        setIsProcessing(true);
+
+        try {
+            const result = await processCheckout(createAppointment, user.id);
+
+            if (result.success) {
+                showSuccess(`¡Éxito! Se agendaron ${result.created.length} cita(s) correctamente`);
+                onHide();
+            } else {
+                // Some appointments succeeded, some failed
+                if (result.created.length > 0) {
+                    showWarning(
+                        `Se agendaron ${result.created.length} cita(s), pero ${result.errors.length} fallaron.
+                        Por favor revisa tu carrito.`
+                    );
+                } else {
+                    showError('No se pudo agendar ninguna cita. Por favor, intenta nuevamente.');
+                }
+
+                // Show specific errors
+                result.errors.forEach(err => {
+                    console.error(`Error en ${err.service}:`, err.error);
+                });
+            }
+        } catch (error) {
+            console.error('Error during checkout:', error);
+            showError('Ocurrió un error al procesar tu solicitud. Por favor, intenta nuevamente.');
+        } finally {
+            setIsProcessing(false);
+        }
     };
 
     return (
@@ -79,13 +129,32 @@ export function CartOffcanvas({ show, onHide }) {
                             <strong>Total: <span id="cartTotal">{formatPrice(totalPrice)}</span></strong>
                         </div>
                         <div className="d-grid gap-2">
-                            <Button variant="danger" className="w-100" onClick={clearCart}>
+                            <Button
+                                variant="danger"
+                                className="w-100"
+                                onClick={clearCart}
+                                disabled={isProcessing}
+                            >
                                 <i className="fas fa-trash me-2"></i>
                                 Vaciar Carrito
                             </Button>
-                            <Button variant="primary" className="w-100">
-                                <i className="fas fa-calendar-check me-2"></i>
-                                Agendar Servicios
+                            <Button
+                                variant="primary"
+                                className="w-100"
+                                onClick={handleCheckout}
+                                disabled={isProcessing}
+                            >
+                                {isProcessing ? (
+                                    <>
+                                        <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                                        Procesando...
+                                    </>
+                                ) : (
+                                    <>
+                                        <i className="fas fa-calendar-check me-2"></i>
+                                        Agendar Servicios
+                                    </>
+                                )}
                             </Button>
                         </div>
                     </div>
