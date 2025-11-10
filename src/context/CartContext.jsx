@@ -17,10 +17,11 @@ export function CartProvider({ children }) {
      * Add service to cart with appointment details
      */
     const addServiceToCart = (service, appointmentDetails) => {
-        const { veterinarian, date, time, notes } = appointmentDetails;
+        const { petId, veterinarian, date, time, notes } = appointmentDetails;
 
         const existingItem = cart.find(item =>
             item.id === service.id &&
+            item.petId === petId &&
             item.veterinarian === veterinarian &&
             item.date === date &&
             item.time === time
@@ -29,6 +30,7 @@ export function CartProvider({ children }) {
         if (existingItem) {
             setCart(cart.map(item =>
                 item.id === service.id &&
+                item.petId === petId &&
                 item.veterinarian === veterinarian &&
                 item.date === date &&
                 item.time === time
@@ -38,6 +40,7 @@ export function CartProvider({ children }) {
         } else {
             setCart([...cart, {
                 ...service,
+                petId,
                 veterinarian,
                 date,
                 time,
@@ -51,9 +54,10 @@ export function CartProvider({ children }) {
     /**
      * Remove item from cart
      */
-    const removeFromCart = (serviceId, veterinarian = "", date = "", time = "") => {
+    const removeFromCart = (serviceId, petId = "", veterinarian = "", date = "", time = "") => {
         setCart(cart.filter(item =>
             !(item.id === serviceId &&
+                item.petId === petId &&
                 item.veterinarian === veterinarian &&
                 item.date === date &&
                 item.time === time)
@@ -63,14 +67,15 @@ export function CartProvider({ children }) {
     /**
      * Update quantity of item in cart
      */
-    const updateQuantity = (serviceId, newQuantity, veterinarian = "", date = "", time = "") => {
+    const updateQuantity = (serviceId, newQuantity, petId = "", veterinarian = "", date = "", time = "") => {
         if (newQuantity <= 0) {
-            removeFromCart(serviceId, veterinarian, date, time);
+            removeFromCart(serviceId, petId, veterinarian, date, time);
             return;
         }
 
         setCart(cart.map(item =>
             item.id === serviceId &&
+            item.petId === petId &&
             item.veterinarian === veterinarian &&
             item.date === date &&
             item.time === time
@@ -102,6 +107,69 @@ export function CartProvider({ children }) {
         return cart.length === 0;
     };
 
+    /**
+     * Process checkout - convert cart items to appointments
+     * Returns array of appointment IDs that were created
+     */
+    const processCheckout = async (createAppointmentFn, userId) => {
+        const results = [];
+        const errors = [];
+
+        for (const item of cart) {
+            try {
+                // Ensure time has seconds format (HH:mm:ss)
+                const formattedTime = item.time.includes(':') && item.time.split(':').length === 2
+                    ? `${item.time}:00`
+                    : item.time;
+
+                // Prepare appointment data according to backend schema
+                // TODO: Get user's default address from backend instead of hardcoded value
+                const appointmentData = {
+                    clientId: userId,
+                    veterinarianId: parseInt(item.veterinarian),
+                    petId: parseInt(item.petId),
+                    serviceId: parseInt(item.id),
+                    date: item.date,
+                    time: formattedTime,
+                    duration: item.duration,
+                    address: item.address || "Dirección del cliente (pendiente de configurar)",
+                    notes: item.notes || ''
+                    // status is NOT included - backend sets it to "pending" automatically
+                };
+
+                console.log('Sending appointment data:', appointmentData);
+                console.log('Cart item:', item);
+
+                const result = await createAppointmentFn(appointmentData);
+
+                if (result.success) {
+                    results.push(result.appointment);
+                } else {
+                    errors.push({
+                        service: item.name,
+                        error: result.error
+                    });
+                }
+            } catch (error) {
+                errors.push({
+                    service: item.name,
+                    error: error.message
+                });
+            }
+        }
+
+        // If all appointments were created successfully, clear the cart
+        if (errors.length === 0) {
+            clearCart();
+        }
+
+        return {
+            success: errors.length === 0,
+            created: results,
+            errors: errors
+        };
+    };
+
     const value = {
         cart,
         addServiceToCart,
@@ -109,7 +177,8 @@ export function CartProvider({ children }) {
         updateQuantity,
         clearCart,
         getCartTotals,
-        isCartEmpty
+        isCartEmpty,
+        processCheckout
     };
 
     return (
