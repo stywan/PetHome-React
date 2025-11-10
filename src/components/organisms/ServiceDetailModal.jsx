@@ -1,15 +1,22 @@
 import { useState, useEffect } from 'react';
 import { useCart } from '../../context/CartContext';
 import { useNotification } from '../../context/NotificationContext';
+import { useAuth } from '../../context/AuthContext';
+import { usePets } from '../../context/PetContext';
+import { useVeterinarians } from '../../context/VeterinarianContext';
 import { formatPrice } from '../../utils/formatters';
-import { veterinarians, timeSlots, categoryTranslations, animalTranslations } from '../../data/servicesData';
+import { timeSlots, categoryTranslations, animalTranslations } from '../../data/servicesData';
 import { Badge } from '../atoms/Badge';
 
 export function ServiceDetailModal({ service, show, onHide }) {
     const { addServiceToCart } = useCart();
     const { showSuccess, showWarning } = useNotification();
+    const { user } = useAuth();
+    const { pets } = usePets();
+    const { veterinarians, isLoading: isLoadingVets } = useVeterinarians();
 
     const [formData, setFormData] = useState({
+        petId: '',
         veterinarian: '',
         date: '',
         time: '',
@@ -34,6 +41,7 @@ export function ServiceDetailModal({ service, show, onHide }) {
 
             // Reset form when modal is shown
             setFormData({
+                petId: '',
                 veterinarian: '',
                 date: '',
                 time: '',
@@ -67,7 +75,8 @@ export function ServiceDetailModal({ service, show, onHide }) {
 
     const handleInputChange = (e) => {
         const { id, value } = e.target;
-        const fieldName = id.replace('veterinarianSelect', 'veterinarian')
+        const fieldName = id.replace('petSelect', 'petId')
+                            .replace('veterinarianSelect', 'veterinarian')
                             .replace('appointmentDate', 'date')
                             .replace('timeSelect', 'time')
                             .replace('specialNotes', 'notes');
@@ -78,14 +87,27 @@ export function ServiceDetailModal({ service, show, onHide }) {
     };
 
     const handleAddToCart = () => {
+        // Check if user is logged in
+        if (!user) {
+            showWarning('Debes iniciar sesión para agendar una cita');
+            return;
+        }
+
         // Validate required fields
-        if (!formData.veterinarian || !formData.date || !formData.time) {
-            showWarning('Por favor, completa todos los campos requeridos (Veterinario, Fecha y Hora)');
+        if (!formData.petId || !formData.veterinarian || !formData.date || !formData.time) {
+            showWarning('Por favor, completa todos los campos requeridos (Mascota, Veterinario, Fecha y Hora)');
+            return;
+        }
+
+        // Validate user has pets
+        if (pets.length === 0) {
+            showWarning('Debes registrar al menos una mascota antes de agendar una cita');
             return;
         }
 
         // Add to cart
         const appointmentDetails = {
+            petId: formData.petId,
             veterinarian: formData.veterinarian,
             date: formData.date,
             time: formData.time,
@@ -140,33 +162,81 @@ export function ServiceDetailModal({ service, show, onHide }) {
                             </div>
                             <div className="col-md-6">
                                 <form id="appointmentForm">
+                                    {/* Selector de Mascota */}
+                                    {user && (
+                                        <div className="mb-3">
+                                            <label className="form-label fw-semibold">
+                                                <i className="fas fa-paw me-2"></i>
+                                                Seleccionar Mascota *
+                                            </label>
+                                            {pets.length > 0 ? (
+                                                <select
+                                                    className="form-select"
+                                                    id="petSelect"
+                                                    required
+                                                    value={formData.petId}
+                                                    onChange={handleInputChange}
+                                                >
+                                                    <option value="">Selecciona una mascota</option>
+                                                    {pets.map(pet => (
+                                                        <option key={pet.id} value={pet.id}>
+                                                            {pet.name} - {pet.species} ({pet.breed})
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            ) : (
+                                                <div className="alert alert-warning" role="alert">
+                                                    <small>
+                                                        <i className="fas fa-info-circle me-2"></i>
+                                                        Debes registrar al menos una mascota en tu perfil antes de agendar citas.
+                                                    </small>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
                                     {/* veterinario */}
                                     <div className="mb-3">
                                         <label className="form-label fw-semibold">
                                             <i className="fas fa-user-md me-2"></i>
-                                            Seleccionar Veterinario
+                                            Seleccionar Veterinario *
                                         </label>
-                                        <select
-                                            className="form-select"
-                                            id="veterinarianSelect"
-                                            required
-                                            value={formData.veterinarian}
-                                            onChange={handleInputChange}
-                                        >
-                                            <option value="">Selecciona un veterinario</option>
-                                            {veterinarians.map(vet => (
-                                                <option key={vet.id} value={vet.id}>
-                                                    {vet.name} - {vet.specialty}
-                                                </option>
-                                            ))}
-                                        </select>
+                                        {isLoadingVets ? (
+                                            <div className="text-center py-2">
+                                                <span className="spinner-border spinner-border-sm me-2"></span>
+                                                Cargando veterinarios...
+                                            </div>
+                                        ) : veterinarians.length > 0 ? (
+                                            <select
+                                                className="form-select"
+                                                id="veterinarianSelect"
+                                                required
+                                                value={formData.veterinarian}
+                                                onChange={handleInputChange}
+                                            >
+                                                <option value="">Selecciona un veterinario</option>
+                                                {veterinarians.map(vet => (
+                                                    <option key={vet.id} value={vet.id}>
+                                                        {vet.userName || 'Nombre no disponible'} - {vet.specialty}
+                                                        {vet.licenseNumber ? ` - Lic: ${vet.licenseNumber}` : ''}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        ) : (
+                                            <div className="alert alert-warning" role="alert">
+                                                <small>
+                                                    <i className="fas fa-info-circle me-2"></i>
+                                                    No hay veterinarios disponibles en este momento.
+                                                </small>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* fecha */}
                                     <div className="mb-3">
                                         <label className="form-label fw-semibold">
                                             <i className="fas fa-calendar me-2"></i>
-                                            Fecha de la Cita
+                                            Fecha de la Cita *
                                         </label>
                                         <input
                                             type="date"
@@ -176,14 +246,18 @@ export function ServiceDetailModal({ service, show, onHide }) {
                                             min={today}
                                             value={formData.date}
                                             onChange={handleInputChange}
+                                            disabled={!user}
                                         />
+                                        {!user && (
+                                            <small className="text-muted">Inicia sesión para agendar</small>
+                                        )}
                                     </div>
 
                                     {/* hora */}
                                     <div className="mb-3">
                                         <label className="form-label fw-semibold">
                                             <i className="fas fa-clock me-2"></i>
-                                            Horario Disponible
+                                            Horario Disponible *
                                         </label>
                                         <select
                                             className="form-select"
@@ -191,6 +265,7 @@ export function ServiceDetailModal({ service, show, onHide }) {
                                             required
                                             value={formData.time}
                                             onChange={handleInputChange}
+                                            disabled={!user}
                                         >
                                             <option value="">Selecciona un horario</option>
                                             {timeSlots.map(time => (

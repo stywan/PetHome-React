@@ -1,7 +1,20 @@
 import { Button } from '../atoms/Button';
-import { formatPrice, formatDate, formatVeterinarianName } from '../../utils/formatters';
+import { formatPrice, formatDate } from '../../utils/formatters';
+import { usePets } from '../../context/PetContext';
+import { useVeterinarians } from '../../context/VeterinarianContext';
 
 export function CartItem({ item, onUpdateQuantity, onRemove }) {
+    const { pets } = usePets();
+    const { veterinarians } = useVeterinarians();
+
+    // Find pet name from petId
+    const pet = pets.find(p => p.id === parseInt(item.petId));
+    const petName = pet ? pet.name : 'Mascota no encontrada';
+
+    // Find veterinarian name from veterinarianId
+    const vet = veterinarians.find(v => v.id === parseInt(item.veterinarian));
+    const vetName = vet ? `${vet.userName || 'Nombre no disponible'} - ${vet.specialty}` : 'Veterinario no encontrado';
+
     return (
         <div className="cart-item">
             <div className="d-flex align-items-start gap-3">
@@ -10,10 +23,16 @@ export function CartItem({ item, onUpdateQuantity, onRemove }) {
                 <div className="flex-grow-1">
                     <h6 className="mb-1">{item.name}</h6>
                     <p className="text-muted small mb-1">{formatPrice(item.price)}</p>
+                    {item.petId && (
+                        <p className="text-muted small mb-1">
+                            <i className="fas fa-paw me-1"></i>
+                            {petName}
+                        </p>
+                    )}
                     {item.veterinarian && (
                         <p className="text-muted small mb-1">
                             <i className="fas fa-user-md me-1"></i>
-                            {formatVeterinarianName(item.veterinarian)}
+                            {vetName}
                         </p>
                     )}
                     {item.date && item.time && (
