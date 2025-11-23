@@ -9,9 +9,25 @@ import { DEFAULT_USER_PHOTO } from '../constants';
 export function LoginPage() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const { login, register, isLoading } = useAuth();
+    const { login, register, isLoading, isAuthenticated, user } = useAuth();
     const [activeTab, setActiveTab] = useState('login');
     const [error, setError] = useState('');
+
+    // Redirigir si el usuario ya está autenticado
+    useEffect(() => {
+        if (isAuthenticated && user) {
+            // Redirigir según el rol del usuario
+            if (user.role === 'VET') {
+                navigate('/vet/dashboard', { replace: true });
+            } else if (user.role === 'CLIENT') {
+                navigate('/client/dashboard', { replace: true });
+            } else if (user.role === 'ADMIN') {
+                navigate('/admin/dashboard', { replace: true });
+            } else {
+                navigate('/client/dashboard', { replace: true });
+            }
+        }
+    }, [isAuthenticated, user, navigate]);
 
     // Detectar si viene del link de "Registrarse"
     useEffect(() => {
@@ -115,6 +131,19 @@ export function LoginPage() {
             console.error('Register error:', err);
         }
     };
+
+    // Mostrar loader mientras se valida la autenticación
+    if (isLoading) {
+        return (
+            <AuthTemplate>
+                <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '100vh' }}>
+                    <div className="spinner-border text-primary" role="status">
+                        <span className="visually-hidden">Cargando...</span>
+                    </div>
+                </div>
+            </AuthTemplate>
+        );
+    }
 
     return (
         <AuthTemplate>

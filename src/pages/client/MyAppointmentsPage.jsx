@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ClientDashboardTemplate } from '../../components/templates/ClientDashboardTemplate';
 import { AppointmentCard } from '../../components/molecules/AppointmentCard';
 import { EmptyState } from '../../components/molecules/EmptyState';
@@ -15,7 +15,14 @@ function MyAppointmentsPage() {
     const { user } = useAuth();
     const { getAppointmentsByClient, getUpcomingAppointments, getAppointmentHistory, cancelAppointment } = useAppointments();
     const { getPetsByOwner } = usePets();
-    const { veterinarians } = useVeterinarians();
+    const { veterinarians, loadVeterinarians } = useVeterinarians();
+
+    // Cargar veterinarios al montar el componente
+    useEffect(() => {
+        if (veterinarians.length === 0) {
+            loadVeterinarians();
+        }
+    }, []);
 
     const [activeTab, setActiveTab] = useState('upcoming'); // 'upcoming' | 'history'
 

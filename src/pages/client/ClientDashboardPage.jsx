@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ClientDashboardTemplate } from '../../components/templates/ClientDashboardTemplate';
 import { StatsCard } from '../../components/molecules/StatsCard';
@@ -17,7 +17,14 @@ function ClientDashboardPage() {
     const { user } = useAuth();
     const { getUpcomingAppointments } = useAppointments();
     const { getPetsByOwner, calculatePetAge } = usePets();
-    const { veterinarians } = useVeterinarians();
+    const { veterinarians, loadVeterinarians } = useVeterinarians();
+
+    // Cargar veterinarios al montar el componente
+    useEffect(() => {
+        if (veterinarians.length === 0) {
+            loadVeterinarians();
+        }
+    }, []);
 
     const upcomingAppointments = getUpcomingAppointments(user?.id).slice(0, 3);
     const myPets = getPetsByOwner(user?.id);

@@ -13,7 +13,7 @@ export function ServiceDetailModal({ service, show, onHide }) {
     const { showSuccess, showWarning } = useNotification();
     const { user } = useAuth();
     const { pets } = usePets();
-    const { veterinarians, isLoading: isLoadingVets } = useVeterinarians();
+    const { veterinarians, isLoading: isLoadingVets, loadVeterinarians } = useVeterinarians();
 
     const [formData, setFormData] = useState({
         petId: '',
@@ -22,6 +22,13 @@ export function ServiceDetailModal({ service, show, onHide }) {
         time: '',
         notes: ''
     });
+
+    // Cargar veterinarios cuando se abre el modal
+    useEffect(() => {
+        if (show && veterinarians.length === 0) {
+            loadVeterinarians();
+        }
+    }, [show]);
 
     // Bootstrap modal management
     useEffect(() => {

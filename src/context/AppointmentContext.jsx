@@ -101,8 +101,12 @@ export function AppointmentProvider({ children }) {
 
             setAppointments(enrichedAppointments);
         } catch (err) {
-            console.error('Error loading appointments:', err);
-            setError(err.message);
+            // Si es error 401, no mostrar error ya que el usuario será redirigido
+            if (err.response?.status !== 401) {
+                console.error('Error loading appointments:', err);
+                setError(err.message);
+            }
+            setAppointments([]);
         } finally {
             setIsLoading(false);
         }

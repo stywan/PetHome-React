@@ -10,10 +10,6 @@ export function VeterinarianProvider({ children }) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    // Cargar veterinarios al montar el componente
-    useEffect(() => {
-        loadVeterinarians();
-    }, []);
 
     /**
      * Cargar todos los veterinarios con sus datos de usuario

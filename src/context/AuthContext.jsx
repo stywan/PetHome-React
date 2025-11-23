@@ -12,21 +12,50 @@ export function AuthProvider({ children }) {
 
     // Cargar usuario desde localStorage al iniciar
     useEffect(() => {
-        const savedUser = authService.getCurrentUser();
-        const isAuth = authService.isAuthenticated();
+        const initAuth = async () => {
+            try {
+                const savedUser = authService.getCurrentUser();
+                const isAuth = authService.isAuthenticated();
 
-        if (savedUser && isAuth) {
-            setUser(savedUser);
-            // Mapear roles del backend a userType
-            const userTypeMap = {
-                'CLIENT': 'client',
-                'VET': 'veterinarian',
-                'ADMIN': 'admin'
-            };
-            setUserType(userTypeMap[savedUser.role] || 'client');
-            setIsAuthenticated(true);
-        }
-        setIsLoading(false);
+                if (savedUser && isAuth) {
+                    // Validar que el usuario tenga los campos requeridos
+                    if (savedUser.id && savedUser.email && savedUser.role) {
+                        setUser(savedUser);
+                        // Mapear roles del backend a userType
+                        const userTypeMap = {
+                            'CLIENT': 'client',
+                            'VET': 'veterinarian',
+                            'ADMIN': 'admin'
+                        };
+                        setUserType(userTypeMap[savedUser.role] || 'client');
+                        setIsAuthenticated(true);
+                    } else {
+                        // Si los datos del usuario están corruptos, limpiar localStorage
+                        console.warn('Datos de usuario corruptos detectados, limpiando...');
+                        authService.logout();
+                        setUser(null);
+                        setUserType(null);
+                        setIsAuthenticated(false);
+                    }
+                } else {
+                    // Asegurar estado limpio si no hay autenticación
+                    setUser(null);
+                    setUserType(null);
+                    setIsAuthenticated(false);
+                }
+            } catch (error) {
+                console.error('Error al cargar usuario desde localStorage:', error);
+                // En caso de error, limpiar localStorage y estado
+                authService.logout();
+                setUser(null);
+                setUserType(null);
+                setIsAuthenticated(false);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        initAuth();
     }, []);
 
     /**

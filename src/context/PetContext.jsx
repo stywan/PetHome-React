@@ -15,6 +15,9 @@ export function PetProvider({ children }) {
     useEffect(() => {
         if (user?.id) {
             loadPetsByOwner(user.id);
+        } else {
+            // Limpiar mascotas cuando no hay usuario
+            setPets([]);
         }
     }, [user]);
 
@@ -28,8 +31,13 @@ export function PetProvider({ children }) {
             const data = await petService.getPetsByOwnerId(ownerId);
             setPets(data);
         } catch (err) {
-            setError(err.message || 'Error al cargar mascotas');
-            console.error('Error loading pets:', err);
+            // Si es error 401, no mostrar error ya que el usuario será redirigido
+            if (err.response?.status === 401) {
+                setPets([]);
+            } else {
+                setError(err.message || 'Error al cargar mascotas');
+                console.error('Error loading pets:', err);
+            }
         } finally {
             setIsLoading(false);
         }

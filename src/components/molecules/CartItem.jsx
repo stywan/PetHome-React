@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Button } from '../atoms/Button';
 import { formatPrice, formatDate } from '../../utils/formatters';
 import { usePets } from '../../context/PetContext';
@@ -5,7 +6,14 @@ import { useVeterinarians } from '../../context/VeterinarianContext';
 
 export function CartItem({ item, onUpdateQuantity, onRemove }) {
     const { pets } = usePets();
-    const { veterinarians } = useVeterinarians();
+    const { veterinarians, loadVeterinarians } = useVeterinarians();
+
+    // Cargar veterinarios si no están cargados
+    useEffect(() => {
+        if (veterinarians.length === 0) {
+            loadVeterinarians();
+        }
+    }, []);
 
     // Find pet name from petId
     const pet = pets.find(p => p.id === parseInt(item.petId));

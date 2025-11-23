@@ -76,10 +76,12 @@ const addResponseInterceptor = (client) => {
 
         switch (status) {
           case 401:
-            // Unauthorized - clear token and redirect to login
+            // Unauthorized - clear token silently
+            // NO redirigir aquí para evitar loops infinitos
+            // El AuthContext y RoleBasedRoute manejarán la redirección
             localStorage.removeItem('authToken');
             localStorage.removeItem('user');
-            window.location.href = '/login';
+            console.warn('Token inválido o expirado. Por favor inicia sesión nuevamente.');
             break;
           case 403:
             console.error('Access forbidden:', data.message || 'Insufficient permissions');
